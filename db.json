@@ -1,0 +1,156 @@
+{
+  "tvs": [
+    {
+      "id": 1,
+      "name": "TV 1",
+      "channel": 1,
+      "defaultChannel": 1,
+      "lastSeen": "2026-06-13T05:07:14.406Z",
+      "override": {
+        "sourceType": "VIDEO_LOOP",
+        "sourceUrl": "/presentations/video.mp4"
+      }
+    },
+    {
+      "id": 2,
+      "name": "TV 2",
+      "channel": 2,
+      "defaultChannel": 2,
+      "lastSeen": "",
+      "override": null
+    },
+    {
+      "id": 3,
+      "name": "TV 3",
+      "channel": 3,
+      "defaultChannel": 3,
+      "lastSeen": "",
+      "override": null
+    },
+    {
+      "id": 4,
+      "name": "TV 4",
+      "channel": 4,
+      "defaultChannel": 4,
+      "lastSeen": "",
+      "override": null
+    },
+    {
+      "id": 5,
+      "name": "TV 5",
+      "channel": 5,
+      "defaultChannel": 5,
+      "lastSeen": "",
+      "override": null
+    },
+    {
+      "id": 6,
+      "name": "TV 6",
+      "channel": 6,
+      "defaultChannel": 6,
+      "lastSeen": "",
+      "override": null
+    },
+    {
+      "id": 7,
+      "name": "TV 7",
+      "channel": 7,
+      "defaultChannel": 7,
+      "lastSeen": "",
+      "override": null
+    },
+    {
+      "id": 8,
+      "name": "TV 8",
+      "channel": 8,
+      "defaultChannel": 8,
+      "lastSeen": "2026-06-12T18:55:17.295Z",
+      "override": null
+    }
+  ],
+  "channels": [
+    {
+      "id": 1,
+      "name": "Canal 1",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal1"
+    },
+    {
+      "id": 2,
+      "name": "Canal 2",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal2"
+    },
+    {
+      "id": 3,
+      "name": "Canal 3",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal3"
+    },
+    {
+      "id": 4,
+      "name": "Canal 4",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal4"
+    },
+    {
+      "id": 5,
+      "name": "Canal 5",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal5"
+    },
+    {
+      "id": 6,
+      "name": "Canal 6",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal6"
+    },
+    {
+      "id": 7,
+      "name": "Canal 7",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal7"
+    },
+    {
+      "id": 8,
+      "name": "Canal 8",
+      "sourceType": "LIVE",
+      "sourceUrl": "",
+      "mediamtxPath": "canal8"
+    }
+  ],
+  "schedule": [],
+  "users": [
+    {
+      "id": "1781285494621192",
+      "username": "admin",
+      "passwordHash": "$2b$10$5rtxeNRogiVmf9rFkmD5luwNnGgEq4YZrq4upcb7Gy1II5gW/gwGK",
+      "role": "admin",
+      "name": "Administrador",
+      "createdAt": "2026-06-12T17:31:34.805Z"
+    },
+    {
+      "id": "1781285494815509",
+      "username": "rrhh",
+      "passwordHash": "$2b$10$NAqBMDiwdhmyCChgCxQXLeulj6q424NjRQ2x/ZtvSqQds6/n5WdZy",
+      "role": "rrhh",
+      "name": "Recursos Humanos",
+      "createdAt": "2026-06-12T17:31:34.927Z"
+    },
+    {
+      "id": "1781285495051687",
+      "username": "tv",
+      "passwordHash": "$2b$10$NEfrzg2MJFAuCH2gOrkuw.JButWJgOnLskX/wWO8ukT0e3zBV6PGm",
+      "role": "tv",
+      "name": "Pantallas TV",
+      "createdAt": "2026-06-12T17:31:35.175Z"
+    }
+  ]
+}
