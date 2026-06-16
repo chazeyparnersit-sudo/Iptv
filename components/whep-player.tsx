@@ -34,7 +34,26 @@ export function WhepPlayer({ url, className }: WhepPlayerProps) {
         pc.addTransceiver("audio", { direction: "recvonly" })
         pc.ontrack = (ev) => {
           if (videoRef.current && ev.streams[0]) {
-            videoRef.current.srcObject = ev.streams[0]
+            const video = videoRef.current
+            video.srcObject = ev.streams[0]
+
+            // Watchdog: si el video acumula más de 1.5s de drift respecto al live, resincronizar
+            const watchdog = setInterval(() => {
+              if (!video.buffered.length || video.paused) return
+              const bufferedEnd = video.buffered.end(video.buffered.length - 1)
+              const drift = bufferedEnd - video.currentTime
+              if (drift > 1.5) {
+                console.warn(`[whep] drift ${drift.toFixed(2)}s — resincronizando`)
+                video.currentTime = bufferedEnd - 0.08
+              }
+            }, 800)
+
+            // Limpiar watchdog cuando el pc se cierre
+            pc.addEventListener("connectionstatechange", () => {
+              if (pc.connectionState === "closed" || pc.connectionState === "failed") {
+                clearInterval(watchdog)
+              }
+            })
           }
         }
         pc.onconnectionstatechange = () => {
