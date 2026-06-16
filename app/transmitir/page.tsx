@@ -79,7 +79,7 @@ export default function TransmitirPage() {
               </button>
               <span className="font-semibold">{selected.name}</span>
             </div>
-            <WhipBroadcaster channelPath={selected.mediamtxPath} />
+            <WhipBroadcaster channelPath={selected.mediamtxPath} channelName={selected.name} />
           </>
         )}
       </main>
