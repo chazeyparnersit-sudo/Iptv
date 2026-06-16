@@ -42,7 +42,6 @@ export function TvClient() {
       } catch {
         // ignore transient errors
       }
-      fetch(`/api/tvs/${tv}/ping`, { method: "POST" }).catch(() => {})
     }
 
     tick()
