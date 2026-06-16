@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import { readDB } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
+import { requireRole } from "@/lib/guard"
 import type { ScheduleItem } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
@@ -12,6 +13,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
   const body = await req.json()
   const item: ScheduleItem = {
     id: randomUUID(),
@@ -31,6 +34,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
   const { searchParams } = new URL(req.url)
   const id = searchParams.get("id")
   const { error } = await supabase.from('schedule').delete().eq('id', id)
