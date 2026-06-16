@@ -1,4 +1,3 @@
-import { PinGate } from "@/components/pin-gate"
 import { SourcesClient } from "./sources-client"
 
 export const metadata = {
@@ -6,9 +5,5 @@ export const metadata = {
 }
 
 export default function SourcesPage() {
-  return (
-    <PinGate panel="admin" title="Configuración de canales">
-      <SourcesClient />
-    </PinGate>
-  )
+  return <SourcesClient />
 }

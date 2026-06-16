@@ -2,9 +2,11 @@ import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import type { UserRole } from "./types"
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET!
-)
+const secret = process.env.JWT_SECRET
+if (!secret || secret.length < 32) {
+  throw new Error("JWT_SECRET no configurado o demasiado corto (mín. 32 chars)")
+}
+const SECRET = new TextEncoder().encode(secret)
 
 export interface SessionPayload {
   id: string
@@ -14,17 +16,22 @@ export interface SessionPayload {
 }
 
 export async function createSession(payload: SessionPayload, secure = false): Promise<string> {
+  const isTV = payload.role === "tv"
+  const expiresIn = isTV ? "60d" : "8h"
+  const maxAge = isTV ? 60 * 60 * 24 * 60 : 60 * 60 * 8
+
   const token = await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("60d")
+    .setExpirationTime(expiresIn)
     .sign(SECRET)
+
   const cookieStore = await cookies()
   cookieStore.set("session", token, {
     httpOnly: true,
     secure,
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 60,
+    maxAge,
     path: "/",
   })
   return token
