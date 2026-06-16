@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { readDB, resolveAssignment } from "@/lib/db"
+import { readAssignmentDB, resolveAssignment } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
 import { HEARTBEAT_TIMEOUT_MS } from "@/lib/config"
@@ -7,7 +7,9 @@ import { HEARTBEAT_TIMEOUT_MS } from "@/lib/config"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const db = await readDB()
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
+  const db = await readAssignmentDB()
   const now = Date.now()
   const tvs = db.tvs.map((tv) => {
     const online = tv.lastSeen ? now - new Date(tv.lastSeen).getTime() < HEARTBEAT_TIMEOUT_MS : false

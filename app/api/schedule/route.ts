@@ -8,6 +8,8 @@ import type { ScheduleItem } from "@/lib/types"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
   const db = await readDB()
   return NextResponse.json({ schedule: db.schedule })
 }

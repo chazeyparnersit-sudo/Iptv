@@ -18,14 +18,19 @@ export async function readDB(): Promise<DB> {
   }
 }
 
-export async function writeDB(data: DB): Promise<void> {
-  // writeDB ya no se usa directamente — usar updateDB o funciones específicas
-}
-
-export async function updateDB<T>(fn: (db: DB) => T | Promise<T>): Promise<T> {
-  const db = await readDB()
-  const result = await fn(db)
-  return result
+export async function readAssignmentDB(): Promise<Omit<DB, "users"> & { users: [] }> {
+  const [{ data: tvs }, { data: channels }, { data: schedule }] =
+    await Promise.all([
+      supabase.from('tvs').select('*').order('id'),
+      supabase.from('channels').select('*').order('id'),
+      supabase.from('schedule').select('*'),
+    ])
+  return {
+    tvs: tvs ?? [],
+    channels: channels ?? [],
+    schedule: schedule ?? [],
+    users: [],
+  }
 }
 
 function isActiveNow(start: string, end: string, now: Date): boolean {
@@ -34,13 +39,14 @@ function isActiveNow(start: string, end: string, now: Date): boolean {
   return true
 }
 
-export function resolveAssignment(db: DB, tvId: number): ResolvedAssignment | null {
-  const tv = db.tvs.find((t) => t.id === tvId)
+export function resolveAssignment(db: any, tvId: number): ResolvedAssignment | null {
+  const tv = db.tvs.find((t: TV) => t.id === tvId)
   if (!tv) return null
   const now = new Date()
   const active = db.schedule
-    .filter((s) => s.tvIds.includes(tvId) && isActiveNow(s.startTime, s.endTime, now))
-    .at(-1)
+    .filter((s: any) => s.tvIds.includes(tvId) && isActiveNow(s.startTime, s.endTime, now))
+    .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+    .at(0)
   if (active) {
     return buildResolved(db, tv, {
       sourceType: active.sourceType,
@@ -54,7 +60,7 @@ export function resolveAssignment(db: DB, tvId: number): ResolvedAssignment | nu
   if (tv.override) {
     return buildResolved(db, tv, tv.override)
   }
-  const channel = db.channels.find((c) => c.id === tv.channel)
+  const channel = db.channels.find((c: any) => c.id === tv.channel)
   if (!channel) return null
   return {
     tvId: tv.id,
@@ -71,19 +77,8 @@ export function resolveAssignment(db: DB, tvId: number): ResolvedAssignment | nu
   }
 }
 
-function buildResolved(
-  db: DB,
-  tv: TV,
-  o: {
-    sourceType: ResolvedAssignment["sourceType"]
-    channelId?: number
-    sourceUrl?: string
-    content?: string
-    bgColor?: string
-    textColor?: string
-  },
-): ResolvedAssignment {
-  const channel = o.channelId ? db.channels.find((c) => c.id === o.channelId) : undefined
+function buildResolved(db: any, tv: TV, o: any): ResolvedAssignment {
+  const channel = o.channelId ? db.channels.find((c: any) => c.id === o.channelId) : undefined
   let sourceUrl = o.sourceUrl ?? ""
   if ((o.sourceType === "LIVE" || o.sourceType === "VIDEO_LOOP") && channel) {
     sourceUrl = whepUrl(channel.mediamtxPath)

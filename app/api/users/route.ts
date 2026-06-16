@@ -58,7 +58,11 @@ export async function PATCH(req: Request) {
   const update: any = {}
   if (username) update.username = username
   if (name) update.name = name
-  if (role) update.role = role
+  if (role) {
+    if (!["admin","rrhh","jefe","tv"].includes(role))
+      return NextResponse.json({ error: "Rol inválido" }, { status: 400 })
+    update.role = role
+  }
   if (password) update.passwordHash = bcrypt.hashSync(String(password), 10)
 
   const { data, error } = await supabase.from('users').update(update).eq('id', String(id)).select('id, username, role, name, createdAt').single()
