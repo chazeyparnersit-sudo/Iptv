@@ -56,7 +56,7 @@ export function WhepPlayer({ url, className }: WhepPlayerProps) {
             }
           }
           pc.addEventListener("icegatheringstatechange", check)
-          setTimeout(resolve, 1500)
+          setTimeout(resolve, 400)
         })
         const res = await fetch(url, {
           method: "POST",
@@ -85,6 +85,7 @@ export function WhepPlayer({ url, className }: WhepPlayerProps) {
         playsInline
         muted={muted}
         className="h-full w-full bg-black object-contain"
+        onLoadedMetadata={(e) => { const v = e.currentTarget as any; if (v.latencyHint !== undefined) v.latencyHint = "realtime" }}
       />
       {muted && status === "playing" && (
         <button
