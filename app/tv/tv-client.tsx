@@ -15,6 +15,14 @@ export function TvClient() {
   const [showOverlay, setShowOverlay] = useState(false)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Restaurar último assignment conocido desde localStorage al montar
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(`assignment:${tv}`)
+      if (cached) setAssignment(JSON.parse(cached))
+    } catch { /* ignorar */ }
+  }, [tv])
+
   // Poll assignment + send heartbeat every 5s
   useEffect(() => {
     let active = true
@@ -24,6 +32,7 @@ export function TvClient() {
         const res = await fetch(`/api/assignment?tv=${tv}`, { cache: "no-store" })
         if (res.ok && active) {
           const data: ResolvedAssignment = await res.json()
+          try { localStorage.setItem(`assignment:${tv}`, JSON.stringify(data)) } catch { /* ignorar */ }
           setAssignment((prev) => {
             if (
               prev &&
