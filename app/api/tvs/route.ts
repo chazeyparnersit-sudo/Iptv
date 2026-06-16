@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { readDB, resolveAssignment } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
+import { requireRole } from "@/lib/guard"
 import { HEARTBEAT_TIMEOUT_MS } from "@/lib/config"
 
 export const dynamic = "force-dynamic"
@@ -17,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireRole("admin", "rrhh")
+  if (authError) return authError
   const body = await req.json()
   const id = Number(body.id)
   const update: any = {}

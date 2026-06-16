@@ -1,24 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
-
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET!
-)
-
-const TV_WHITELIST = [
-  "192.168.1.72",
-  "192.168.1.31",
-  "192.168.1.64",
-  "192.168.1.109",
-  "192.168.1.121",
-]
-
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for")
-  if (xff) return xff.split(",")[0].trim()
-  return req.ip ?? ""
-}
+import { SECRET } from "@/lib/jwt-secret"
 
 async function getSessionPayload(req: NextRequest) {
   const token = req.cookies.get("session")?.value
