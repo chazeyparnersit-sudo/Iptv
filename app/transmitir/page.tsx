@@ -36,7 +36,12 @@ export default function TransmitirPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-        <h1 className="text-lg font-bold">Transmitir</h1>
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push("/")} className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800">
+            ← Inicio
+          </button>
+          <h1 className="text-lg font-bold">Transmitir</h1>
+        </div>
         <button
           onClick={handleLogout}
           className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
