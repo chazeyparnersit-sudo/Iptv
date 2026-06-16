@@ -1,63 +1,30 @@
-import { promises as fs } from "fs"
-import path from "path"
 import type { DB, ResolvedAssignment, TV } from "./types"
 import { whepUrl } from "./config"
-
-const DB_PATH = path.join(process.cwd(), "db.json")
-
-function seed(): DB {
-  const tvs: TV[] = Array.from({ length: 8 }, (_, i) => ({
-    id: i + 1,
-    name: `TV ${i + 1}`,
-    channel: i + 1,
-    defaultChannel: i + 1,
-    lastSeen: "",
-    override: null,
-  }))
-  const channels = Array.from({ length: 8 }, (_, i) => ({
-    id: i + 1,
-    name: `Canal ${i + 1}`,
-    sourceType: "LIVE" as const,
-    sourceUrl: "",
-    mediamtxPath: `canal${i + 1}`,
-  }))
-  return { tvs, channels, schedule: [], users: [] }
-}
-
-let writeLock: Promise<void> = Promise.resolve()
+import { supabase } from "./supabase"
 
 export async function readDB(): Promise<DB> {
-  try {
-    const raw = await fs.readFile(DB_PATH, "utf8")
-    const parsed = JSON.parse(raw) as DB
-    if (!parsed.tvs || !parsed.channels) throw new Error("invalid")
-    if (!parsed.schedule) parsed.schedule = []
-    if (!parsed.users) parsed.users = []
-    return parsed
-  } catch (err: any) {
-    if (err?.code === "ENOENT") {
-      const data = seed()
-      await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), "utf8")
-      return data
-    }
-    throw err
+  const [{ data: tvs }, { data: channels }, { data: schedule }, { data: users }] =
+    await Promise.all([
+      supabase.from('tvs').select('*').order('id'),
+      supabase.from('channels').select('*').order('id'),
+      supabase.from('schedule').select('*'),
+      supabase.from('users').select('*'),
+    ])
+  return {
+    tvs: tvs ?? [],
+    channels: channels ?? [],
+    schedule: schedule ?? [],
+    users: users ?? [],
   }
 }
 
 export async function writeDB(data: DB): Promise<void> {
-  const run = writeLock.then(async () => {
-    const tmpPath = DB_PATH + ".tmp"
-    await fs.writeFile(tmpPath, JSON.stringify(data, null, 2), "utf8")
-    await fs.rename(tmpPath, DB_PATH)
-  })
-  writeLock = run.catch(() => {})
-  return run
+  // writeDB ya no se usa directamente — usar updateDB o funciones específicas
 }
 
 export async function updateDB<T>(fn: (db: DB) => T | Promise<T>): Promise<T> {
   const db = await readDB()
   const result = await fn(db)
-  await writeDB(db)
   return result
 }
 

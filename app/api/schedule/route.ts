@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
-import { readDB, updateDB } from "@/lib/db"
+import { readDB } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 import type { ScheduleItem } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
@@ -24,18 +25,15 @@ export async function POST(req: Request) {
     startTime: body.startTime ?? "",
     endTime: body.endTime ?? "",
   }
-  await updateDB((db) => {
-    db.schedule.push(item)
-  })
+  const { error } = await supabase.from('schedule').insert(item)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ item })
 }
 
-// Cancel a scheduled item: ?id=uuid
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url)
   const id = searchParams.get("id")
-  await updateDB((db) => {
-    db.schedule = db.schedule.filter((s) => s.id !== id)
-  })
+  const { error } = await supabase.from('schedule').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

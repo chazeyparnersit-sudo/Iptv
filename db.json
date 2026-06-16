@@ -5,7 +5,7 @@
       "name": "TV 1",
       "channel": 1,
       "defaultChannel": 1,
-      "lastSeen": "2026-06-13T05:07:14.406Z",
+      "lastSeen": "2026-06-16T16:24:26.880Z",
       "override": {
         "sourceType": "VIDEO_LOOP",
         "sourceUrl": "/presentations/video.mp4"
@@ -16,7 +16,7 @@
       "name": "TV 2",
       "channel": 2,
       "defaultChannel": 2,
-      "lastSeen": "",
+      "lastSeen": "2026-06-16T15:23:35.924Z",
       "override": null
     },
     {
@@ -56,7 +56,7 @@
       "name": "TV 7",
       "channel": 7,
       "defaultChannel": 7,
-      "lastSeen": "",
+      "lastSeen": "2026-06-16T15:23:04.358Z",
       "override": null
     },
     {
