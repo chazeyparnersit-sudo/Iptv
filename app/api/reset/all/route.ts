@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server"
-import { updateDB } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
+import { requireRole } from "@/lib/guard"
 
 export const dynamic = "force-dynamic"
 
-// Reset all TVs to their default live channels
 export async function POST() {
-  await updateDB((db) => {
-    for (const tv of db.tvs) {
-      tv.channel = tv.defaultChannel
-      tv.override = null
-    }
-    db.schedule = []
-  })
+  const { error: authError } = await requireRole("admin")
+  if (authError) return authError
+
+  const { data: tvs } = await supabase.from("tvs").select("id, defaultChannel")
+  await Promise.all((tvs ?? []).map(t =>
+    supabase.from("tvs").update({ channel: t.defaultChannel, override: null }).eq("id", t.id)
+  ))
+  await supabase.from("schedule").delete().neq("id", "")
+
   return NextResponse.json({ ok: true })
 }

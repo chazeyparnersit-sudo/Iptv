@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 import type { UserRole } from "./types"
 
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "fallback-secret-change-me"
+  process.env.JWT_SECRET!
 )
 
 export interface SessionPayload {
