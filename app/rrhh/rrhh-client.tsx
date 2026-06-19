@@ -55,7 +55,7 @@ export function RrhhClient() {
       .catch(() => {})
   }, [])
 
-  async function uploadMedia(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadMedia(e: React.ChangeEvent<HTMLInputElement>, tvIds: number[]) {
     const file = e.target.files?.[0]
     if (!file) return
     setMediaUploading(true)
@@ -64,6 +64,7 @@ export function RrhhClient() {
       const fd = new FormData()
       fd.append("file", file)
       fd.append("type", uploadType)
+      fd.append("tvIds", JSON.stringify(tvIds))
       const res = await fetch("/api/upload-media", { method: "POST", body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Error desconocido")
@@ -473,7 +474,7 @@ export function RrhhClient() {
                   }
                   className="sr-only"
                   disabled={mediaUploading}
-                  onChange={uploadMedia}
+                  onChange={(e) => uploadMedia(e, selected)}
                 />
               </label>
 

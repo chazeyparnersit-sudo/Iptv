@@ -167,7 +167,7 @@ function buildCanvaSlideUrl(url: string, slide: number): string {
 const PDF_SLIDE_DURATION = 5000  // ms por página
 const PDF_POLL_INTERVAL  = 60000 // ms para detectar PDF nuevo
 
-function PdfSlideshow() {
+function PdfSlideshow({ tvId }: { tvId: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -194,18 +194,18 @@ function PdfSlideshow() {
 
   // Carga inicial
   useEffect(() => {
-    loadPdf(`/presentations/presentation.pdf?t=${Date.now()}`)
+    loadPdf(`/presentations/tv-${tvId}/presentation.pdf?t=${Date.now()}`)
   }, [])
 
   // Polling para detectar PDF nuevo
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const res = await fetch("/api/presentation-info", { cache: "no-store" })
+        const res = await fetch(`/api/presentation-info?tvId=${tvId}`, { cache: "no-store" })
         const data = await res.json()
         if (data.exists && data.uploadedAt && data.uploadedAt !== uploadedAtRef.current) {
           uploadedAtRef.current = data.uploadedAt
-          await loadPdf(`/presentations/presentation.pdf?t=${Date.now()}`)
+          await loadPdf(`/presentations/tv-${tvId}/presentation.pdf?t=${Date.now()}`)
         }
       } catch {
         // ignorar
@@ -315,10 +315,10 @@ function Content({ assignment }: { assignment: ResolvedAssignment | null }) {
       return <CanvaSlideshow url={assignment.sourceUrl} />
 
     case "PDF":
-      return <PdfSlideshow />
+      return <PdfSlideshow tvId={assignment.tvId} />
 
     case "IMAGE_SLIDES":
-      return <ImageSlideshow />
+      return <ImageSlideshow tvId={assignment.tvId} />
 
     case "ANNOUNCEMENT":
       return (
@@ -346,14 +346,14 @@ function Content({ assignment }: { assignment: ResolvedAssignment | null }) {
 const IMAGE_SLIDE_DURATION = 5000
 const IMAGE_POLL_INTERVAL  = 60000
 
-function ImageSlideshow() {
+function ImageSlideshow({ tvId }: { tvId: number }) {
   const [slides, setSlides] = useState<string[]>([])
   const [index, setIndex] = useState(0)
   const uploadedAtRef = useRef<string | null>(null)
 
   async function loadSlides() {
     try {
-      const res = await fetch("/api/presentation-info", { cache: "no-store" })
+      const res = await fetch(`/api/presentation-info?tvId=${tvId}`, { cache: "no-store" })
       const data = await res.json()
       if (data.exists && data.type === "IMAGE_SLIDES" && data.slides?.length) {
         uploadedAtRef.current = data.uploadedAt
@@ -371,7 +371,7 @@ function ImageSlideshow() {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const res = await fetch("/api/presentation-info", { cache: "no-store" })
+        const res = await fetch(`/api/presentation-info?tvId=${tvId}`, { cache: "no-store" })
         const data = await res.json()
         if (data.exists && data.uploadedAt && data.uploadedAt !== uploadedAtRef.current) {
           await loadSlides()

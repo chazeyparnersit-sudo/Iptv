@@ -460,6 +460,15 @@ function UsersSection() {
     load()
   }
 
+  async function handleRevoke(id: string, username: string) {
+    if (!confirm(`¿Revocar sesión activa de "${username}"? Tendrá que volver a iniciar sesión.`)) return
+    const r = await fetch(`/api/users/${id}/revoke`, { method: "POST" })
+    const d = await r.json()
+    if (d.error) { setError(d.error); return }
+    setError(null)
+    alert(`Sesión de "${username}" revocada correctamente.`)
+  }
+
   async function handleDelete(id: string, username: string) {
     if (!confirm(`¿Eliminar usuario "${username}"?`)) return
     const r = await fetch("/api/users", {
@@ -533,6 +542,7 @@ function UsersSection() {
                       <td className="py-2">
                         <div className="flex gap-2">
                           <button onClick={() => { setEditId(u.id); setEditForm({ username: u.username, name: u.name, role: u.role, password: "" }) }} className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">Editar</button>
+                          <button onClick={() => handleRevoke(u.id, u.username)} className="rounded border border-amber-200 px-2 py-1 text-xs text-amber-600 hover:bg-amber-50">Revocar</button>
                           <button onClick={() => handleDelete(u.id, u.username)} className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50">Eliminar</button>
                         </div>
                       </td>
