@@ -7,6 +7,9 @@ import type { Override, SourceType } from "@/lib/types"
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
+  const { error: authError } = await requireRole("tv", "admin", "rrhh", "jefe")
+  if (authError) return authError
+
   const { searchParams } = new URL(req.url)
   const tv = Number(searchParams.get("tv"))
   if (!tv) return NextResponse.json({ error: "missing tv" }, { status: 400 })
