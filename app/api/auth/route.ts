@@ -17,8 +17,6 @@ export async function POST(req: Request) {
       { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
     )
   }
-  const proto = req.headers.get("x-forwarded-proto") ?? "http"
-  const isSecure = proto === "https"
   const { username, password } = await req.json()
   if (!username || !password) {
     return NextResponse.json({ ok: false, error: "Datos incompletos" }, { status: 400 })
@@ -31,6 +29,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Usuario o contraseña incorrectos" }, { status: 401 })
   }
   clearRateLimit(ip)
+  // Las TVs entran por HTTP directo al puerto 3000 (no pasan por Nginx), por lo que su
+  // cookie NUNCA puede llevar `secure: true` o el navegador la descartaría. El resto de
+  // roles entra siempre por HTTPS vía Nginx. En vez de confiar únicamente en el header
+  // x-forwarded-proto (que dejaría de funcionar en silencio si Nginx fallara en reescribirlo),
+  // usamos el rol como señal adicional: para no-TV, exigimos producción + header https.
+  const proto = req.headers.get("x-forwarded-proto") ?? "http"
+  const isSecure =
+    user.role === "tv"
+      ? false
+      : process.env.NODE_ENV === "production" && proto === "https"
   await createSession(
     { id: user.id, username: user.username, role: user.role, name: user.name, tokenVersion: user.tokenVersion ?? 0 },
     isSecure
