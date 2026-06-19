@@ -177,6 +177,13 @@ function PdfSlideshow() {
 
   // Cargar (o recargar) el PDF
   async function loadPdf(url: string) {
+    // Destruir el PDF anterior para liberar memoria
+    if (pdfRef.current) {
+      try {
+        await (pdfRef.current as { destroy: () => Promise<void> }).destroy()
+      } catch { /* ignorar */ }
+      pdfRef.current = null
+    }
     const pdfjsLib = await import("pdfjs-dist")
     pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs"
     const pdf = await pdfjsLib.getDocument({ url }).promise
@@ -210,16 +217,28 @@ function PdfSlideshow() {
   // Renderizar página actual en canvas
   useEffect(() => {
     if (!pdfRef.current || !canvasRef.current) return
-    if (renderingRef.current) return
+
+    let cancelled = false
 
     async function render() {
+      // Si hay un render en curso, esperar a que termine y reintentar
+      if (renderingRef.current) {
+        await new Promise<void>((resolve) => {
+          const poll = setInterval(() => {
+            if (!renderingRef.current) { clearInterval(poll); resolve() }
+          }, 50)
+        })
+        if (cancelled) return
+      }
+
       renderingRef.current = true
       try {
         const pdf = pdfRef.current as { getPage: (n: number) => Promise<unknown> }
         const pdfPage = await pdf.getPage(page) as {
           getViewport: (o: { scale: number }) => { width: number; height: number }
-          render: (ctx: unknown) => { promise: Promise<void> }
+          render: (ctx: unknown) => { promise: Promise<void>; cancel?: () => void }
         }
+        if (cancelled) return
         const canvas = canvasRef.current!
         const ctx = canvas.getContext("2d")!
         const viewport = pdfPage.getViewport({ scale: 1 })
@@ -230,13 +249,16 @@ function PdfSlideshow() {
         const scaled = pdfPage.getViewport({ scale })
         canvas.width = scaled.width
         canvas.height = scaled.height
-        await pdfPage.render({ canvasContext: ctx, viewport: scaled }).promise
+        const renderTask = pdfPage.render({ canvasContext: ctx, viewport: scaled })
+        if (cancelled) { renderTask.cancel?.(); return }
+        await renderTask.promise
       } finally {
         renderingRef.current = false
       }
     }
 
     render()
+    return () => { cancelled = true }
   }, [page])
 
   // Autoplay
