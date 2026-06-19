@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { readDB } from "@/lib/db"
+import { getSession } from "@/lib/auth"
 
 const MEDIAMTX_BASE = process.env.MEDIAMTX_WEBRTC ?? "http://127.0.0.1:8889"
 const ALLOWED_ORIGINS = new Set([
   "https://iptv-local-chazey.duckdns.org",
   "http://134.209.220.194:3000",
 ])
+const ALLOWED_ROLES = new Set(["admin", "rrhh", "jefe"])
 
 function getAllowedOrigin(req: NextRequest): string {
   const origin = req.headers.get("origin") ?? ""
@@ -28,15 +30,18 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const session = await getSession()
+  if (!session || !ALLOWED_ROLES.has(session.role)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const { path } = await params
   const pathStr = path.join("/")
-
   const db = await readDB()
   const validPaths = new Set(db.channels.map((c: { mediamtxPath: string }) => c.mediamtxPath))
   if (!validPaths.has(pathStr)) {
     return NextResponse.json({ error: "Canal inválido" }, { status: 404 })
   }
-
   const body = await req.arrayBuffer()
   const upstream = await fetch(`${MEDIAMTX_BASE}/${pathStr}/whip`, {
     method: "POST",
