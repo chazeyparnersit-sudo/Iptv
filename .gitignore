@@ -17,3 +17,4 @@ node_modules
 .next/
 .DS_Store
 db.json
+public/app.ipk
