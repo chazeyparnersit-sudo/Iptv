@@ -3,25 +3,22 @@ import bcrypt from "bcryptjs"
 import { readDB } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { getSession } from "@/lib/auth"
+import { requireRole } from "@/lib/guard"
 import type { User, UserRole } from "@/lib/types"
 import { userPostSchema, userPatchSchema } from "@/lib/schemas"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const session = await getSession()
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const { error: authError } = await requireRole("admin")
+  if (authError) return authError
   const { data: users } = await supabase.from('users').select('id, username, role, name, createdAt')
   return NextResponse.json({ users: users ?? [] })
 }
 
 export async function POST(req: Request) {
-  const session = await getSession()
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const { error: authError } = await requireRole("admin")
+  if (authError) return authError
   const parsed = userPostSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   const { username, password, role, name } = parsed.data
@@ -45,10 +42,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const session = await getSession()
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const { error: authError } = await requireRole("admin")
+  if (authError) return authError
   const parsed2 = userPatchSchema.safeParse(await req.json())
   if (!parsed2.success) return NextResponse.json({ error: parsed2.error.flatten() }, { status: 400 })
   const { id, username, password, role, name } = parsed2.data
@@ -64,10 +59,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const session = await getSession()
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const { error: authError, session } = await requireRole("admin")
+  if (authError) return authError
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: "ID requerido" }, { status: 400 })
   if (String(id) === session.id) {
