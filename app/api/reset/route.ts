@@ -14,15 +14,23 @@ export async function POST(req: Request) {
   const db = await readDB()
   const tv = db.tvs.find((t) => t.id === tvId)
   if (!tv) return NextResponse.json({ error: "tv not found" }, { status: 404 })
-  await supabase.from('tvs').update({ channel: tv.defaultChannel, override: null }).eq('id', tvId)
   const affected = db.schedule.filter(s => s.tvIds.includes(tvId))
-  for (const s of affected) {
-    const newIds = s.tvIds.filter(id => id !== tvId)
-    if (newIds.length === 0) {
-      await supabase.from('schedule').delete().eq('id', s.id)
-    } else {
-      await supabase.from('schedule').update({ tvIds: newIds }).eq('id', s.id)
-    }
+
+  const results = await Promise.all([
+    supabase.from('tvs').update({ channel: tv.defaultChannel, override: null }).eq('id', tvId),
+    ...affected.map(s => {
+      const newIds = s.tvIds.filter(id => id !== tvId)
+      return newIds.length === 0
+        ? supabase.from('schedule').delete().eq('id', s.id)
+        : supabase.from('schedule').update({ tvIds: newIds }).eq('id', s.id)
+    })
+  ])
+
+  const failed = results.filter(r => r.error)
+  if (failed.length > 0) {
+    console.error('[reset] errores parciales:', failed.map(r => r.error))
+    return NextResponse.json({ error: 'reset parcialmente fallido', details: failed.map(r => r.error) }, { status: 500 })
   }
+
   return NextResponse.json({ ok: true })
 }
