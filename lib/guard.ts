@@ -18,7 +18,8 @@ export async function requireRole(...roles: UserRole[]) {
     .eq("id", session.id)
     .single()
 
-  if (!userRow || userRow.tokenVersion !== session.tokenVersion) {
+  const sessionTokenVersion = session.tokenVersion ?? 0
+  if (!userRow || userRow.tokenVersion !== sessionTokenVersion) {
     console.warn(`[auth] REVOKED user=${session.username} role=${session.role} ts=${new Date().toISOString()}`)
     return { error: NextResponse.json({ error: "Sesión revocada" }, { status: 401 }), session: null }
   }
