@@ -57,9 +57,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  if (pathname.startsWith("/diagnostico")) {
+    const session = await getSessionPayload(req)
+    if (!session || session.role !== "admin") {
+      const url = req.nextUrl.clone()
+      url.pathname = "/login"
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/tv/:path*", "/admin/:path*", "/rrhh/:path*", "/transmitir/:path*"],
+  matcher: ["/tv/:path*", "/admin/:path*", "/rrhh/:path*", "/transmitir/:path*", "/diagnostico/:path*"],
 }
