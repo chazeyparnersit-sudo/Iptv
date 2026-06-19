@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server"
 import { readDB } from "@/lib/db"
 import { whipUrl } from "@/lib/config"
-import { getSession } from "@/lib/auth"
+import { requireRole } from "@/lib/guard"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
 
   const db = await readDB()
   const channels = db.channels.map((c) => ({
