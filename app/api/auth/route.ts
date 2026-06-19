@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { readDB } from "@/lib/db"
-import { createSession, deleteSession } from "@/lib/auth"
+import { createSession, deleteSession, getSession } from "@/lib/auth"
 import { checkRateLimit, clearRateLimit } from "@/lib/rate-limit"
+import { supabase } from "@/lib/supabase"
 
 export const dynamic = "force-dynamic"
 
@@ -47,6 +48,23 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
+  // Revocar el token actual incrementando tokenVersion, además de borrar la cookie.
+  // Sin esto, un JWT filtrado/copiado antes del logout seguiría siendo válido hasta
+  // su expiración natural (8h o 60d) aunque el usuario haya cerrado sesión.
+  const session = await getSession()
+  if (session) {
+    const { data: current } = await supabase
+      .from("users")
+      .select("tokenVersion")
+      .eq("id", session.id)
+      .single()
+    if (current) {
+      await supabase
+        .from("users")
+        .update({ tokenVersion: (current.tokenVersion ?? 0) + 1 })
+        .eq("id", session.id)
+    }
+  }
   await deleteSession()
   return NextResponse.json({ ok: true })
 }
