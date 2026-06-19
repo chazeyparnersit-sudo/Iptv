@@ -127,9 +127,16 @@ function CanvaSlideshow({ url }: { url: string }) {
 
   const embedUrl = buildCanvaSlideUrl(url, slide)
 
+  // NOTA (B6, investigado 2026-06): el embed público de Canva (.../view?embed) no expone
+  // ninguna API de postMessage para controlar la navegación interna desde la página padre,
+  // y los iframes no re-leen su propio `src` en caliente al cambiar solo el query param.
+  // El remount via `key={embedUrl}` es la única forma conocida de forzar el avance automático
+  // de diapositiva sin depender de la Canva Connect API (requiere OAuth, fuera de alcance).
+  // Esto implica una recarga de red completa por slide; es una limitación del proveedor,
+  // no un bug de esta implementación. Evaluado y descartado: cross-fade con doble iframe
+  // (mitiga el parpadeo pero duplica la carga de red, empeora el problema de fondo).
   return (
     <iframe
-      // key fuerza remount en cada cambio de diapositiva
       key={embedUrl}
       src={embedUrl}
       title="Presentación Canva"
