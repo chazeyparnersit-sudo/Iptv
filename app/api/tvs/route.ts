@@ -3,6 +3,7 @@ import { readAssignmentDB, resolveAssignment } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
 import { HEARTBEAT_TIMEOUT_MS } from "@/lib/config"
+import { tvsPatchSchema } from "@/lib/schemas"
 
 export const dynamic = "force-dynamic"
 
@@ -22,11 +23,12 @@ export async function GET() {
 export async function POST(req: Request) {
   const { error: authError } = await requireRole("admin", "rrhh")
   if (authError) return authError
-  const body = await req.json()
-  const id = Number(body.id)
-  const update: any = {}
-  if (body.name !== undefined) update.name = body.name
-  if (body.defaultChannel !== undefined) update.defaultChannel = Number(body.defaultChannel)
+  const parsed = tvsPatchSchema.safeParse(await req.json())
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  const { id, name, defaultChannel } = parsed.data
+  const update: Partial<{name: string, defaultChannel: number}> = {}
+  if (name !== undefined) update.name = name
+  if (defaultChannel !== undefined) update.defaultChannel = defaultChannel
   const { data, error } = await supabase.from('tvs').update(update).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: "tv not found" }, { status: 404 })
   return NextResponse.json({ tv: data })

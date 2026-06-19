@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
 import type { SourceType } from "@/lib/types"
+import { channelSourceSchema } from "@/lib/schemas"
 
 export const dynamic = "force-dynamic"
 
@@ -13,7 +14,9 @@ export async function POST(
   if (authError) return authError
   const { id } = await params
   const channelId = Number(id)
-  const body = await req.json()
+  const parsed = channelSourceSchema.safeParse(await req.json())
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  const body = parsed.data
   const update: any = {}
   if (body.name !== undefined) update.name = body.name
   if (body.sourceType !== undefined) update.sourceType = body.sourceType as SourceType

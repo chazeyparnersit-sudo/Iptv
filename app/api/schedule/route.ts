@@ -4,6 +4,7 @@ import { readDB } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
 import type { ScheduleItem } from "@/lib/types"
+import { schedulePostSchema } from "@/lib/schemas"
 
 export const dynamic = "force-dynamic"
 
@@ -17,7 +18,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const { error: authError } = await requireRole("admin", "rrhh", "jefe")
   if (authError) return authError
-  const body = await req.json()
+  const parsed = schedulePostSchema.safeParse(await req.json())
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  const body = parsed.data
   const item: ScheduleItem = {
     id: randomUUID(),
     tvIds: (body.tvIds ?? []).map(Number),

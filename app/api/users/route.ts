@@ -4,6 +4,7 @@ import { readDB } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { getSession } from "@/lib/auth"
 import type { User, UserRole } from "@/lib/types"
+import { userPostSchema, userPatchSchema } from "@/lib/schemas"
 
 export const dynamic = "force-dynamic"
 
@@ -21,14 +22,9 @@ export async function POST(req: Request) {
   if (!session || session.role !== "admin") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
-  const { username, password, role, name } = await req.json()
-  if (!username || !password || !role || !name) {
-    return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
-  }
-  const validRoles: UserRole[] = ["admin", "rrhh", "jefe", "tv"]
-  if (!validRoles.includes(role)) {
-    return NextResponse.json({ error: "Rol inválido" }, { status: 400 })
-  }
+  const parsed = userPostSchema.safeParse(await req.json())
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  const { username, password, role, name } = parsed.data
   const { data: existing } = await supabase.from('users').select('id').eq('username', username).single()
   if (existing) return NextResponse.json({ error: "El usuario ya existe" }, { status: 409 })
 
@@ -52,17 +48,13 @@ export async function PATCH(req: Request) {
   if (!session || session.role !== "admin") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
-  const { id, username, password, role, name } = await req.json()
-  if (!id) return NextResponse.json({ error: "ID requerido" }, { status: 400 })
-
+  const parsed2 = userPatchSchema.safeParse(await req.json())
+  if (!parsed2.success) return NextResponse.json({ error: parsed2.error.flatten() }, { status: 400 })
+  const { id, username, password, role, name } = parsed2.data
   const update: any = {}
   if (username) update.username = username
   if (name) update.name = name
-  if (role) {
-    if (!["admin","rrhh","jefe","tv"].includes(role))
-      return NextResponse.json({ error: "Rol inválido" }, { status: 400 })
-    update.role = role
-  }
+  if (role) update.role = role
   if (password) update.passwordHash = bcrypt.hashSync(String(password), 10)
 
   const { data, error } = await supabase.from('users').update(update).eq('id', String(id)).select('id, username, role, name, createdAt').single()
