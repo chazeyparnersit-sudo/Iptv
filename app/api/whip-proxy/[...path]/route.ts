@@ -9,20 +9,26 @@ const ALLOWED_ORIGINS = new Set([
 ])
 const ALLOWED_ROLES = new Set(["admin", "rrhh", "jefe"])
 
-function getAllowedOrigin(req: NextRequest): string {
+// Devuelve el origin solo si está en la whitelist. null = no se agrega el header
+// Access-Control-Allow-Origin, dejando que el navegador bloquee la respuesta por CORS
+// en vez de devolver un origin "de fallback" que no corresponde al request real.
+function getAllowedOrigin(req: NextRequest): string | null {
   const origin = req.headers.get("origin") ?? ""
-  return ALLOWED_ORIGINS.has(origin) ? origin : "https://iptv-local-chazey.duckdns.org"
+  return ALLOWED_ORIGINS.has(origin) ? origin : null
+}
+
+function corsHeaders(req: NextRequest, extra: Record<string, string>): Record<string, string> {
+  const origin = getAllowedOrigin(req)
+  return origin ? { ...extra, "Access-Control-Allow-Origin": origin, "Vary": "Origin" } : extra
 }
 
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": getAllowedOrigin(req),
+    headers: corsHeaders(req, {
       "Access-Control-Allow-Methods": "POST, OPTIONS, PATCH, DELETE",
       "Access-Control-Allow-Headers": "Content-Type",
-      "Vary": "Origin",
-    },
+    }),
   })
 }
 
@@ -51,11 +57,9 @@ export async function POST(
   const resBody = await upstream.arrayBuffer()
   return new NextResponse(resBody, {
     status: upstream.status,
-    headers: {
+    headers: corsHeaders(req, {
       "Content-Type": upstream.headers.get("Content-Type") || "application/sdp",
-      "Access-Control-Allow-Origin": getAllowedOrigin(req),
       "Location": upstream.headers.get("Location") || "",
-      "Vary": "Origin",
-    },
+    }),
   })
 }
