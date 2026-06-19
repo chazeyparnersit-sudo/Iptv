@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { readDB } from "@/lib/db"
-import { getSession } from "@/lib/auth"
+import { requireRole } from "@/lib/guard"
 
 const MEDIAMTX_BASE = process.env.MEDIAMTX_WEBRTC ?? "http://127.0.0.1:8889"
 const ALLOWED_ORIGINS = new Set([
   "https://iptv-local-chazey.duckdns.org",
   "http://134.209.220.194:3000",
 ])
-const ALLOWED_ROLES = new Set(["admin", "rrhh", "jefe"])
 
 // Devuelve el origin solo si está en la whitelist. null = no se agrega el header
 // Access-Control-Allow-Origin, dejando que el navegador bloquee la respuesta por CORS
@@ -36,10 +35,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const session = await getSession()
-  if (!session || !ALLOWED_ROLES.has(session.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
 
   const { path } = await params
   const pathStr = path.join("/")
