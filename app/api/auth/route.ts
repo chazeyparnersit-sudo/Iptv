@@ -17,26 +17,24 @@ export async function POST(req: Request) {
       { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
     )
   }
-
   const proto = req.headers.get("x-forwarded-proto") ?? "http"
   const isSecure = proto === "https"
   const { username, password } = await req.json()
-
   if (!username || !password) {
     return NextResponse.json({ ok: false, error: "Datos incompletos" }, { status: 400 })
   }
-
   const db = await readDB()
   const user = db.users.find((u) => u.username === username)
   const hash = user?.passwordHash ?? DUMMY_HASH
   const valid = await bcrypt.compare(String(password), hash)
-
   if (!user || !valid) {
     return NextResponse.json({ ok: false, error: "Usuario o contraseña incorrectos" }, { status: 401 })
   }
-
   clearRateLimit(ip)
-  await createSession({ id: user.id, username: user.username, role: user.role, name: user.name }, isSecure)
+  await createSession(
+    { id: user.id, username: user.username, role: user.role, name: user.name, tokenVersion: user.tokenVersion ?? 0 },
+    isSecure
+  )
   return NextResponse.json({ ok: true, role: user.role, name: user.name })
 }
 

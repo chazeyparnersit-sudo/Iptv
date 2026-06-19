@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     role,
     name,
     createdAt: new Date().toISOString(),
+    tokenVersion: 0,
   }
   const { error } = await supabase.from('users').insert(newUser)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

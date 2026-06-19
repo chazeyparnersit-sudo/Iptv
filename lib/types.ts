@@ -45,6 +45,7 @@ export interface User {
   role: UserRole
   name: string
   createdAt: string
+  tokenVersion: number
 }
 export interface DB {
   tvs: TV[]

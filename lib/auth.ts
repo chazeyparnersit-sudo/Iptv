@@ -13,6 +13,7 @@ export interface SessionPayload {
   username: string
   role: UserRole
   name: string
+  tokenVersion: number
 }
 
 export async function createSession(payload: SessionPayload, secure = false): Promise<string> {
