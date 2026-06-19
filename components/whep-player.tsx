@@ -109,14 +109,19 @@ export function WhepPlayer({ url, className }: WhepPlayerProps) {
 
         await new Promise<void>((resolve) => {
           if (pc.iceGatheringState === "complete") return resolve()
+          let timeoutId: ReturnType<typeof setTimeout>
           const check = () => {
             if (pc.iceGatheringState === "complete") {
               pc.removeEventListener("icegatheringstatechange", check)
+              clearTimeout(timeoutId)
               resolve()
             }
           }
           pc.addEventListener("icegatheringstatechange", check)
-          setTimeout(resolve, 400)
+          timeoutId = setTimeout(() => {
+            pc.removeEventListener("icegatheringstatechange", check)
+            resolve()
+          }, 400)
         })
 
         const res = await fetch(url, {
