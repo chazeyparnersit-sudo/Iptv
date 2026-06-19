@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { readDB, resolveAssignment } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
-import type { Override, SourceType } from "@/lib/types"
+import type { Override, SourceType, TV } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const tvId = Number(body.tvId ?? body.tv)
   if (!tvId) return NextResponse.json({ error: "missing tvId" }, { status: 400 })
   const sourceType = body.sourceType as SourceType | undefined
-  let update: any = {}
+  let update: Pick<Partial<TV>, "channel" | "override"> = {}
   if (!sourceType || sourceType === "LIVE") {
     const channelId = Number(body.channel ?? body.channelId)
     if (channelId) update.channel = channelId
