@@ -47,7 +47,7 @@ export async function PATCH(req: Request) {
   const parsed2 = userPatchSchema.safeParse(await req.json())
   if (!parsed2.success) return NextResponse.json({ error: parsed2.error.flatten() }, { status: 400 })
   const { id, username, password, role, name } = parsed2.data
-  const update: any = {}
+  const update: Pick<Partial<User>, "username" | "name" | "role" | "passwordHash"> = {}
   if (username) update.username = username
   if (name) update.name = name
   if (role) update.role = role

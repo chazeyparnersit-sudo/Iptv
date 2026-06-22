@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
-import type { SourceType } from "@/lib/types"
+import type { SourceType, Channel } from "@/lib/types"
 import { channelSourceSchema } from "@/lib/schemas"
 
 export const dynamic = "force-dynamic"
@@ -17,7 +17,7 @@ export async function POST(
   const parsed = channelSourceSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   const body = parsed.data
-  const update: any = {}
+  const update: Partial<Pick<Channel, "name" | "sourceType" | "sourceUrl" | "content" | "bgColor" | "textColor">> = {}
   if (body.name !== undefined) update.name = body.name
   if (body.sourceType !== undefined) update.sourceType = body.sourceType as SourceType
   if (body.sourceUrl !== undefined) update.sourceUrl = body.sourceUrl
