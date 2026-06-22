@@ -2,7 +2,23 @@ import { NextResponse } from "next/server"
 import { resolveAssignment } from "@/lib/db"
 import { supabase } from "@/lib/supabase"
 import { requireRole } from "@/lib/guard"
+import { z } from "zod"
+import { sourceUrlSchema } from "@/lib/schemas"
 import type { Override, SourceType, TV } from "@/lib/types"
+
+const SOURCE_TYPES = ["LIVE", "CANVA", "ANNOUNCEMENT", "VIDEO_LOOP", "PDF", "IMAGE_SLIDES"] as const
+
+const assignmentPostSchema = z.object({
+  tvId: z.number().optional(),
+  tv: z.number().optional(),
+  sourceType: z.enum(SOURCE_TYPES).optional(),
+  channelId: z.number().optional(),
+  channel: z.number().optional(),
+  sourceUrl: sourceUrlSchema.optional(),
+  content: z.string().optional(),
+  bgColor: z.string().optional(),
+  textColor: z.string().optional(),
+})
 
 export const dynamic = "force-dynamic"
 
@@ -63,7 +79,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const { error: authError } = await requireRole("admin", "rrhh", "jefe")
   if (authError) return authError
-  const body = await req.json()
+  const rawBody = await req.json()
+  const parsed = assignmentPostSchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid input", details: parsed.error.flatten() }, { status: 400 })
+  }
+  const body = parsed.data
   const tvId = Number(body.tvId ?? body.tv)
   if (!tvId) return NextResponse.json({ error: "missing tvId" }, { status: 400 })
   const sourceType = body.sourceType as SourceType | undefined

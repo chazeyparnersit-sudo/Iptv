@@ -2,7 +2,7 @@ import { z } from "zod"
 
 const SOURCE_TYPES = ["LIVE", "CANVA", "ANNOUNCEMENT", "VIDEO_LOOP", "PDF", "IMAGE_SLIDES"] as const
 
-const sourceUrlSchema = z.string().refine(
+export const sourceUrlSchema = z.string().refine(
   (url) => {
     if (!url) return true
     if (url.startsWith("/")) return true
