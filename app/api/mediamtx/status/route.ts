@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server"
 import { MEDIAMTX_API_BASE } from "@/lib/config"
+import { requireRole } from "@/lib/guard"
 
 export const dynamic = "force-dynamic"
 
 // Proxies the MediaMTX control API to report which paths are live.
 // Returns: { paths: { [pathName]: { ready: boolean } }, reachable: boolean }
 export async function GET() {
+  const { error: authError } = await requireRole("admin", "rrhh", "jefe")
+  if (authError) return authError
+
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 2500)
