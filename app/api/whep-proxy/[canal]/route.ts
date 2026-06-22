@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { requireRole } from "@/lib/guard"
 
 const MEDIAMTX_BASE = process.env.MEDIAMTX_WEBRTC ?? "http://127.0.0.1:8889"
 
@@ -67,6 +68,9 @@ export async function POST(
   { params }: { params: Promise<{ canal: string }> }
 ) {
   const { canal } = await params
+
+  const { error: authError } = await requireRole("tv", "admin", "rrhh", "jefe")
+  if (authError) return authError
 
   const validPaths = await getValidPaths()
   if (!validPaths.has(canal)) {
