@@ -63,7 +63,6 @@ export async function POST(req: Request) {
       const entries = zip.getEntries()
         .filter(e => {
           if (e.isDirectory) return false
-          const dest = path.resolve("/tmp", path.basename(e.entryName))
           return /\.(png|jpg|jpeg|webp)$/i.test(e.entryName)
         })
         .sort((a, b) => a.entryName.localeCompare(b.entryName, undefined, { numeric: true }))
