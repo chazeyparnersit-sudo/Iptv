@@ -18,34 +18,40 @@ export function WhepPlayer({ url, volume = 100, audioUnlocked = false, className
   const driftRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastStats = useRef<{ delay: number; count: number }>({ delay: 0, count: 0 })
   const [status, setStatus] = useState<Status>("connecting")
-  const [muted, setMuted] = useState(true)
 
-  // Volumen controlado desde el admin (0-100). Solo aplica una vez que el
-  // usuario ya desmuteó (o si volume llega en 0, fuerza mute de nuevo) —
-  // el mute inicial sigue siendo obligatorio por la política de autoplay
-  // de los navegadores, igual que antes.
+  // gestureUnlocked: si el navegador YA recibió un gesto humano (tecla del
+  // remoto en cualquier parte de la página, o el botón manual de acá abajo)
+  // que le permite reproducir audio en autoplay. Una vez true, queda true
+  // para siempre en esta sesión — NO se debe mezclar con la decisión de
+  // mute/unmute del admin, que es independiente.
+  //
+  // Antes esto vivía en el mismo estado `muted` que también controlaba el
+  // volumen del admin, y un efecto los enredaba: bajar el volumen a 0% desde
+  // el panel ponía muted=true, pero el otro efecto (atento a "¿ya hay
+  // gesto?") lo detectaba y volvía a desmutear solo, peleándose con el
+  // admin. Por eso el slider "no cumplía" en vivo. Separados así, el admin
+  // manda en serio: una vez que hubo UN gesto humano (control remoto o
+  // clic), mute/unmute desde el panel es instantáneo, sin volver a tocar
+  // la TV.
+  const [gestureUnlocked, setGestureUnlocked] = useState(false)
+  useEffect(() => {
+    if (audioUnlocked) setGestureUnlocked(true)
+  }, [audioUnlocked])
+
+  const effectiveMuted = volume <= 0 || !gestureUnlocked
+
   useEffect(() => {
     const el = videoRef.current
     if (!el) return
     el.volume = Math.min(100, Math.max(0, volume)) / 100
-    if (volume <= 0) setMuted(true)
-  }, [volume])
-
-  // audioUnlocked llega en true apenas se detecta CUALQUIER tecla del
-  // control remoto / click en toda la página (ver tv-client.tsx). Antes
-  // esto exigía tocar específicamente el botón "Toca para activar audio"
-  // sobre el reproductor — incómodo en una Smart TV manejada por control
-  // remoto. Mantenemos el botón como respaldo manual por si el evento
-  // global no llega a dispararse por algún motivo.
-  useEffect(() => {
-    if (!audioUnlocked || !muted) return
-    setMuted(false)
-    videoRef.current?.play?.().catch(() => {
-      // Bloqueado igual por el navegador: vuelve a quedar muted y el
-      // botón manual sigue disponible.
-      setMuted(true)
-    })
-  }, [audioUnlocked, muted])
+    el.muted = effectiveMuted
+    if (!effectiveMuted) {
+      el.play?.().catch(() => {
+        // El navegador igual lo bloqueó (gesto insuficiente): no forzamos
+        // gestureUnlocked de vuelta a false, el botón manual sigue ahí.
+      })
+    }
+  }, [volume, effectiveMuted])
 
   useEffect(() => {
     let cancelled = false
@@ -181,13 +187,13 @@ export function WhepPlayer({ url, volume = 100, audioUnlocked = false, className
         ref={videoRef}
         autoPlay
         playsInline
-        muted={muted}
+        muted={effectiveMuted}
         className="h-full w-full bg-black object-contain"
       />
-      {muted && status === "playing" && (
+      {!gestureUnlocked && volume > 0 && status === "playing" && (
         <button
           onClick={() => {
-            setMuted(false)
+            setGestureUnlocked(true)
             videoRef.current?.play?.().catch(() => {})
           }}
           className="absolute inset-0 flex items-center justify-center bg-black/40"
