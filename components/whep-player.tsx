@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react"
 interface WhepPlayerProps {
   url: string
   volume?: number
+  audioUnlocked?: boolean
   className?: string
 }
 type Status = "connecting" | "playing" | "error"
 
 const MAX_BUFFER_S = 1.5
 
-export function WhepPlayer({ url, volume = 100, className }: WhepPlayerProps) {
+export function WhepPlayer({ url, volume = 100, audioUnlocked = false, className }: WhepPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -29,6 +30,22 @@ export function WhepPlayer({ url, volume = 100, className }: WhepPlayerProps) {
     el.volume = Math.min(100, Math.max(0, volume)) / 100
     if (volume <= 0) setMuted(true)
   }, [volume])
+
+  // audioUnlocked llega en true apenas se detecta CUALQUIER tecla del
+  // control remoto / click en toda la página (ver tv-client.tsx). Antes
+  // esto exigía tocar específicamente el botón "Toca para activar audio"
+  // sobre el reproductor — incómodo en una Smart TV manejada por control
+  // remoto. Mantenemos el botón como respaldo manual por si el evento
+  // global no llega a dispararse por algún motivo.
+  useEffect(() => {
+    if (!audioUnlocked || !muted) return
+    setMuted(false)
+    videoRef.current?.play?.().catch(() => {
+      // Bloqueado igual por el navegador: vuelve a quedar muted y el
+      // botón manual sigue disponible.
+      setMuted(true)
+    })
+  }, [audioUnlocked, muted])
 
   useEffect(() => {
     let cancelled = false
