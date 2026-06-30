@@ -72,7 +72,8 @@ export function TvClient() {
               prev.content === data.content &&
               prev.bgColor === data.bgColor &&
               prev.textColor === data.textColor &&
-              prev.channelName === data.channelName
+              prev.channelName === data.channelName &&
+              prev.volume === data.volume
             ) {
               return prev
             }
