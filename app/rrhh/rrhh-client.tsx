@@ -113,7 +113,11 @@ export function RrhhClient() {
     setSelected(allSelected ? [] : tvs.map((t) => t.id))
   }
 
-  function buildPayload() {
+  // tvId es obligatorio para VIDEO_LOOP/PDF/IMAGE_SLIDES porque el contenido
+  // se guarda en una carpeta por TV (public/presentations/tv-{tvId}/...).
+  // Antes esto apuntaba a /presentations/<archivo> (raíz), que no es donde
+  // upload-media realmente escribe -> la TV nunca veía el video nuevo.
+  function buildPayload(tvId: number) {
     const base: Record<string, unknown> = { sourceType: contentType as SourceType }
     if (contentType === "LIVE") base.channelId = Number(channelId)
     if (contentType === "CANVA") base.sourceUrl = canvaUrl
@@ -123,12 +127,20 @@ export function RrhhClient() {
       base.textColor = textColor
     }
     if (contentType === "VIDEO_LOOP") {
-      base.sourceUrl = mediaInfo?.filename
-        ? `/presentations/${mediaInfo.filename}`
-        : "/presentations/video.mp4"
+      const filename = mediaInfo?.filename ?? "video.mp4"
+      // Cache-buster: el nombre de archivo es siempre el mismo (video.mp4),
+      // así que sin esto el sourceUrl queda idéntico entre subidas y la TV
+      // (que evita re-render si sourceUrl no cambia) nunca recarga el video,
+      // además del caché del navegador para esa misma URL.
+      const v = mediaInfo?.uploadedAt ? Date.parse(mediaInfo.uploadedAt) : Date.now()
+      base.sourceUrl = `/presentations/tv-${tvId}/${filename}?v=${v}`
     }
-    if (contentType === "PDF") base.sourceUrl = "/presentations/presentation.pdf"
-    if (contentType === "IMAGE_SLIDES") base.sourceUrl = "/presentations/slides/"
+    if (contentType === "PDF") {
+      base.sourceUrl = `/presentations/tv-${tvId}/presentation.pdf`
+    }
+    if (contentType === "IMAGE_SLIDES") {
+      base.sourceUrl = `/presentations/tv-${tvId}/slides/`
+    }
     return base
   }
 
@@ -146,10 +158,14 @@ export function RrhhClient() {
   async function apply() {
     if (!valid()) return
     setSending(true)
-    const payload = buildPayload()
 
     if (startTime || endTime) {
-      // Scheduled
+      // Scheduled — una entrada de schedule cubre varias TVs con UN sourceUrl.
+      // Para VIDEO_LOOP/PDF/IMAGE_SLIDES (contenido guardado por TV), el archivo
+      // subido se replica igual en la carpeta de cada TV seleccionada (ver
+      // upload-media), así que usamos la primera TV seleccionada como referencia
+      // válida para construir la ruta.
+      const payload = buildPayload(selected[0])
       await fetch("/api/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,9 +173,10 @@ export function RrhhClient() {
       })
       mutateSchedule()
     } else {
-      // Immediate override on each selected TV
+      // Immediate override on each selected TV — payload por TV
       await Promise.all(
         selected.map(async (tvId) => {
+          const payload = buildPayload(tvId)
           const res = await fetch("/api/assignment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

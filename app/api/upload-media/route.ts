@@ -48,6 +48,16 @@ export async function POST(req: Request) {
       const metas = await Promise.all(tvIds.map(async (tvId) => {
         const dir = path.join(PRESENTATIONS_DIR, `tv-${tvId}`)
         await fs.mkdir(dir, { recursive: true })
+        // Limpiar versiones previas con otra extensión (p.ej. video.mov -> video.mp4)
+        // para no dejar archivos huérfanos ocupando disco.
+        try {
+          const existing = await fs.readdir(dir)
+          await Promise.all(
+            existing
+              .filter((f) => f !== filename && /^video\.[a-zA-Z0-9]+$/.test(f))
+              .map((f) => fs.rm(path.join(dir, f), { force: true }))
+          )
+        } catch { /* dir nuevo, nada que limpiar */ }
         await fs.writeFile(path.join(dir, filename), buffer)
         return saveMeta(tvId, "VIDEO_LOOP", file.name, { filename })
       }))
