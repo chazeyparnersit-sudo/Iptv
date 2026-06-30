@@ -23,6 +23,37 @@ export function TvClient() {
     } catch { /* ignorar */ }
   }, [tv])
 
+  // Auto-recarga cuando hay un deploy nuevo: antes había que ir TV por TV
+  // a refrescar la pestaña a mano después de cada `pm2 restart`, porque el
+  // navegador se queda corriendo el JS viejo aunque el servidor ya esté
+  // actualizado. Consultamos /api/version (el BUILD_ID de Next.js, único
+  // por build) cada 2 minutos; si cambió respecto al que había al cargar
+  // la página, la TV se recarga sola.
+  useEffect(() => {
+    let active = true
+    let knownBuildId: string | null = null
+
+    async function checkVersion() {
+      try {
+        const res = await fetch("/api/version", { cache: "no-store" })
+        if (!res.ok || !active) return
+        const { buildId } = await res.json()
+        if (!buildId) return
+        if (knownBuildId === null) {
+          knownBuildId = buildId
+          return
+        }
+        if (buildId !== knownBuildId) {
+          window.location.reload()
+        }
+      } catch { /* red caída momentánea: se reintenta en el próximo ciclo */ }
+    }
+
+    checkVersion()
+    const id = setInterval(checkVersion, 2 * 60 * 1000)
+    return () => { active = false; clearInterval(id) }
+  }, [])
+
   // Poll assignment + send heartbeat every 5s
   useEffect(() => {
     let active = true
