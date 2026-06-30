@@ -1,12 +1,7 @@
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import type { UserRole } from "./types"
-
-const secret = process.env.JWT_SECRET
-if (!secret || secret.length < 32) {
-  throw new Error("JWT_SECRET no configurado o demasiado corto (mín. 32 chars)")
-}
-const SECRET = new TextEncoder().encode(secret)
+import { SECRET } from "./jwt-secret"
 
 export interface SessionPayload {
   id: string
