@@ -15,7 +15,21 @@ import {
   Cast,
   Volume2,
   VolumeX,
+  Square,
+  Moon,
+  Power,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -268,6 +282,9 @@ export function AdminClient() {
           </div>
         </Collapsible>
 
+        {/* Agente OBS */}
+        <ObsAgentSection />
+
         {/* Gestión de usuarios */}
         <UsersSection />
       </main>
@@ -456,6 +473,148 @@ function TvCard({
       >
         Abrir pantalla de TV #{tv.id} →
       </a>
+    </div>
+  )
+}
+
+function ObsAgentSection() {
+  const { data, mutate } = useSWR<{
+    agents: Array<{
+      id: string
+      name: string
+      online: boolean
+      lastSeen: string | null
+      pendingCommand: string | null
+      lastResult: string | null
+      lastResultAt: string | null
+    }>
+  }>("/api/obs-agent", fetcher, { refreshInterval: 5000 })
+
+  const agents = data?.agents ?? []
+  const [sending, setSending] = useState<string | null>(null)
+
+  async function sendCommand(agentId: string, command: "stop_stream" | "sleep" | "stop_and_sleep") {
+    setSending(agentId + command)
+    try {
+      await fetch("/api/obs-agent/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, command }),
+      })
+      mutate()
+    } finally {
+      setSending(null)
+    }
+  }
+
+  return (
+    <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <Power className="h-5 w-5 text-blue-600" />
+        <h2 className="text-sm font-semibold text-slate-900">Agente OBS (portátil de transmisión)</h2>
+      </div>
+
+      {agents.length === 0 ? (
+        <p className="text-sm text-slate-400">
+          No hay agentes registrados todavía. Configura el script en el portátil y aparecerá aquí.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {agents.map((a) => (
+            <div key={a.id} className="rounded-lg border border-slate-200 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${a.online ? "bg-emerald-500" : "bg-slate-300"}`} />
+                  <span className="font-medium text-slate-800">{a.name}</span>
+                  <span className="text-xs text-slate-400">{a.online ? "Conectado" : "Sin conexión"}</span>
+                </div>
+                {a.pendingCommand && (
+                  <span className="text-xs text-amber-600">Comando pendiente: {a.pendingCommand}</span>
+                )}
+              </div>
+
+              {a.lastResult && (
+                <p className="mt-1 text-xs text-slate-400">
+                  Último resultado: {a.lastResult}
+                  {a.lastResultAt &&
+                    ` · ${new Date(a.lastResultAt).toLocaleString("es", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`}
+                </p>
+              )}
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!a.online || sending === a.id + "stop_stream"}
+                  onClick={() => sendCommand(a.id, "stop_stream")}
+                >
+                  <Square className="mr-1.5 h-3.5 w-3.5" />
+                  Detener transmisión
+                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={!a.online}>
+                      <Moon className="mr-1.5 h-3.5 w-3.5" />
+                      Suspender PC
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Suspender {a.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esto pone el portátil en suspensión (no lo apaga del todo). Si OBS sigue
+                        transmitiendo, primero detén la transmisión por separado.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => sendCommand(a.id, "sleep")}>
+                        Sí, suspender
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!a.online}
+                      className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Power className="mr-1.5 h-3.5 w-3.5" />
+                      Detener y suspender
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Detener transmisión y suspender {a.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Corta la transmisión de OBS y, justo después, pone el portátil en
+                        suspensión. No lo apaga del todo — para encenderlo de nuevo solo hace
+                        falta tocar una tecla o el botón de encendido.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => sendCommand(a.id, "stop_and_sleep")}>
+                        Sí, detener y suspender
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

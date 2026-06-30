@@ -1,3 +1,13 @@
+export type ObsAgentCommand = "stop_stream" | "sleep" | "stop_and_sleep"
+export interface ObsAgent {
+  id: string
+  name: string
+  lastSeen: string | null
+  pendingCommand: ObsAgentCommand | null
+  commandIssuedAt: string | null
+  lastResult: string | null
+  lastResultAt: string | null
+}
 export type SourceType = "LIVE" | "CANVA" | "ANNOUNCEMENT" | "VIDEO_LOOP" | "PDF" | "IMAGE_SLIDES"
 export interface Channel {
   id: number
