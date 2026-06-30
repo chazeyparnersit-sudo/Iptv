@@ -48,13 +48,6 @@ export function RrhhClient() {
   const [mediaUploading, setMediaUploading] = useState(false)
   const [mediaError, setMediaError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch("/api/presentation-info")
-      .then((r) => r.json())
-      .then(setMediaInfo)
-      .catch(() => {})
-  }, [])
-
   async function uploadMedia(e: React.ChangeEvent<HTMLInputElement>, tvIds: number[]) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -105,6 +98,23 @@ export function RrhhClient() {
 
   const allSelected = selected.length === tvs.length && tvs.length > 0
 
+  // El estado del archivo "ya subido" se muestra por TV (cada una tiene su
+  // propia carpeta). Antes esto consultaba /api/presentation-info sin tvId,
+  // que apuntaba a una ruta raíz que upload-media ya no escribe -> siempre
+  // mostraba "No hay video/PDF subido" aunque sí lo hubiera para la TV.
+  useEffect(() => {
+    if (selected.length === 0) {
+      setMediaInfo(null)
+      return
+    }
+    let cancelled = false
+    fetch(`/api/presentation-info?tvId=${selected[0]}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled) setMediaInfo(data) })
+      .catch(() => { if (!cancelled) setMediaInfo(null) })
+    return () => { cancelled = true }
+  }, [selected[0], uploadType])
+
   function toggleTv(id: number) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
   }
@@ -117,7 +127,10 @@ export function RrhhClient() {
   // se guarda en una carpeta por TV (public/presentations/tv-{tvId}/...).
   // Antes esto apuntaba a /presentations/<archivo> (raíz), que no es donde
   // upload-media realmente escribe -> la TV nunca veía el video nuevo.
-  function buildPayload(tvId: number) {
+  // `media` (opcional) es la info real de /api/presentation-info?tvId=... para
+  // esa TV puntual; si no se pasa, usa el estado mediaInfo (última subida en
+  // esta sesión) como respaldo.
+  function buildPayload(tvId: number, media?: { filename?: string; uploadedAt?: string } | null) {
     const base: Record<string, unknown> = { sourceType: contentType as SourceType }
     if (contentType === "LIVE") base.channelId = Number(channelId)
     if (contentType === "CANVA") base.sourceUrl = canvaUrl
@@ -127,12 +140,13 @@ export function RrhhClient() {
       base.textColor = textColor
     }
     if (contentType === "VIDEO_LOOP") {
-      const filename = mediaInfo?.filename ?? "video.mp4"
+      const info = media ?? mediaInfo
+      const filename = info?.filename ?? "video.mp4"
       // Cache-buster: el nombre de archivo es siempre el mismo (video.mp4),
       // así que sin esto el sourceUrl queda idéntico entre subidas y la TV
       // (que evita re-render si sourceUrl no cambia) nunca recarga el video,
       // además del caché del navegador para esa misma URL.
-      const v = mediaInfo?.uploadedAt ? Date.parse(mediaInfo.uploadedAt) : Date.now()
+      const v = info?.uploadedAt ? Date.parse(info.uploadedAt) : Date.now()
       base.sourceUrl = `/presentations/tv-${tvId}/${filename}?v=${v}`
     }
     if (contentType === "PDF") {
@@ -157,6 +171,42 @@ export function RrhhClient() {
 
   async function apply() {
     if (!valid()) return
+    setMediaError(null)
+
+    // VIDEO_LOOP/PDF/IMAGE_SLIDES dependen de un archivo ya subido para esa
+    // TV puntual. Antes valid() los daba por buenos sin comprobarlo, así que
+    // se podía "aplicar" contenido a una TV que nunca recibió ningún archivo
+    // -> sourceUrl roto (404) en esa TV. Lo verificamos contra el backend
+    // antes de mandar nada.
+    const needsMedia = contentType === "VIDEO_LOOP" || contentType === "PDF" || contentType === "IMAGE_SLIDES"
+    const mediaByTv: Record<number, { exists: boolean; type?: string; filename?: string; uploadedAt?: string }> = {}
+
+    if (needsMedia) {
+      const results = await Promise.all(
+        selected.map(async (tvId) => {
+          try {
+            const res = await fetch(`/api/presentation-info?tvId=${tvId}`, { cache: "no-store" })
+            const data = await res.json()
+            return { tvId, data }
+          } catch {
+            return { tvId, data: { exists: false } }
+          }
+        })
+      )
+      const missing: number[] = []
+      for (const { tvId, data } of results) {
+        mediaByTv[tvId] = data
+        if (!data.exists || data.type !== contentType) missing.push(tvId)
+      }
+      if (missing.length > 0) {
+        const label =
+          contentType === "VIDEO_LOOP" ? "un video" : contentType === "PDF" ? "un PDF" : "un ZIP de imágenes"
+        const names = missing.map((id) => tvs.find((t) => t.id === id)?.name ?? `TV ${id}`).join(", ")
+        setMediaError(`Falta subir ${label} para: ${names}. Sube el archivo para esa TV antes de aplicar.`)
+        return
+      }
+    }
+
     setSending(true)
 
     if (startTime || endTime) {
@@ -165,7 +215,7 @@ export function RrhhClient() {
       // subido se replica igual en la carpeta de cada TV seleccionada (ver
       // upload-media), así que usamos la primera TV seleccionada como referencia
       // válida para construir la ruta.
-      const payload = buildPayload(selected[0])
+      const payload = buildPayload(selected[0], mediaByTv[selected[0]])
       await fetch("/api/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,10 +223,11 @@ export function RrhhClient() {
       })
       mutateSchedule()
     } else {
-      // Immediate override on each selected TV — payload por TV
+      // Immediate override on each selected TV — payload por TV, con la info
+      // de media real de esa TV (no el estado global de la última subida).
       await Promise.all(
         selected.map(async (tvId) => {
-          const payload = buildPayload(tvId)
+          const payload = buildPayload(tvId, mediaByTv[tvId])
           const res = await fetch("/api/assignment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
