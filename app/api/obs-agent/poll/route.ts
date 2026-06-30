@@ -15,11 +15,23 @@ export async function GET(req: Request) {
   const agentId = searchParams.get("agentId")
   if (!agentId) return NextResponse.json({ error: "missing agentId" }, { status: 400 })
 
-  const { data: current } = await supabase
+  const { data: current, error: fetchError } = await supabase
     .from("obs_agents")
     .select("pendingCommand")
     .eq("id", agentId)
     .single()
+
+  if (fetchError || !current) {
+    // Antes esto seguía de largo y devolvía 200 con pendingCommand: null,
+    // como si todo estuviera bien — el agente nunca se enteraba de que su
+    // agentId no existe en la tabla (typo en config.json, por ejemplo) y
+    // simplemente nunca aparecía "Conectado" en el admin, sin pista alguna
+    // de por qué.
+    return NextResponse.json(
+      { error: `Agente '${agentId}' no existe. Revisa agentId en config.json y la tabla obs_agents.` },
+      { status: 404 }
+    )
+  }
 
   // Heartbeat: registra que el agente sigue vivo, sin bloquear la respuesta.
   supabase
@@ -28,5 +40,5 @@ export async function GET(req: Request) {
     .eq("id", agentId)
     .then(() => {})
 
-  return NextResponse.json({ pendingCommand: current?.pendingCommand ?? null })
+  return NextResponse.json({ pendingCommand: current.pendingCommand ?? null })
 }

@@ -493,15 +493,25 @@ function ObsAgentSection() {
   const agents = data?.agents ?? []
   const [sending, setSending] = useState<string | null>(null)
 
+  const [commandError, setCommandError] = useState<string | null>(null)
+
   async function sendCommand(agentId: string, command: "stop_stream" | "sleep" | "stop_and_sleep") {
     setSending(agentId + command)
+    setCommandError(null)
     try {
-      await fetch("/api/obs-agent/command", {
+      const res = await fetch("/api/obs-agent/command", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId, command }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setCommandError(data.error ?? `Error ${res.status} al enviar el comando`)
+        return
+      }
       mutate()
+    } catch {
+      setCommandError("No se pudo contactar al servidor")
     } finally {
       setSending(null)
     }
@@ -513,6 +523,10 @@ function ObsAgentSection() {
         <Power className="h-5 w-5 text-blue-600" />
         <h2 className="text-sm font-semibold text-slate-900">Agente OBS (portátil de transmisión)</h2>
       </div>
+
+      {commandError && (
+        <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{commandError}</p>
+      )}
 
       {agents.length === 0 ? (
         <p className="text-sm text-slate-400">
