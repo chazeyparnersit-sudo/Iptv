@@ -15,26 +15,6 @@ export function TvClient() {
   const [showOverlay, setShowOverlay] = useState(false)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Desbloqueo de audio: los navegadores exigen UN gesto humano (el que sea)
-  // antes de permitir audio en autoplay. Antes esto se resolvía tocando un
-  // botón específico dentro del reproductor; en una Smart TV manejada con
-  // control remoto eso es incómodo (hay que ir físicamente hasta la pantalla).
-  // Escuchamos CUALQUIER tecla/click/touch en toda la página -> un solo
-  // botón del control (aunque sea "volver" o una flecha) desbloquea el audio
-  // para el resto de la sesión, sin que el usuario tenga que apuntarle a un
-  // botón en particular.
-  const [audioUnlocked, setAudioUnlocked] = useState(false)
-  useEffect(() => {
-    if (audioUnlocked) return
-    function unlock() { setAudioUnlocked(true) }
-    window.addEventListener("keydown", unlock, { once: true })
-    window.addEventListener("pointerdown", unlock, { once: true })
-    return () => {
-      window.removeEventListener("keydown", unlock)
-      window.removeEventListener("pointerdown", unlock)
-    }
-  }, [audioUnlocked])
-
   // Restaurar último assignment conocido desde localStorage al montar
   useEffect(() => {
     try {
@@ -92,7 +72,7 @@ export function TvClient() {
       className="relative h-screen w-screen overflow-hidden bg-black"
       onMouseMove={handleMouseMove}
     >
-      <Content assignment={assignment} audioUnlocked={audioUnlocked} />
+      <Content assignment={assignment} />
 
       <div
         className={`pointer-events-none absolute bottom-4 left-4 rounded-md bg-black/50 px-3 py-1.5 text-sm text-white/80 backdrop-blur-sm transition-opacity duration-300 ${
@@ -305,30 +285,21 @@ function PdfSlideshow({ tvId }: { tvId: number }) {
 
 // ---------------------------------------------------------------------------
 // VideoLoopPlayer — <video> en loop con volumen controlable desde el admin.
-// Antes el <video> tenía `muted` fijo en el JSX (sin forma de cambiarlo). Los
-// navegadores bloquean autoplay con sonido sin gesto del usuario, así que
-// arrancamos muted=true (requisito para autoplay) y, si el volumen pedido es
-// > 0, intentamos desmutear apenas el video está listo. Si el navegador lo
-// bloquea (kiosko sin flags de autoplay), se degrada a silencioso sin romper
-// la reproducción, igual que ya hace WhepPlayer con su overlay de "toca para
-// activar audio".
+// El admin es la única fuente de verdad: muted = volume <= 0. Si el
+// navegador de la TV bloquea el autoplay con sonido, eso queda fuera del
+// alcance de esta app.
 // ---------------------------------------------------------------------------
-function VideoLoopPlayer({ src, volume, audioUnlocked }: { src: string; volume: number; audioUnlocked: boolean }) {
+function VideoLoopPlayer({ src, volume }: { src: string; volume: number }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const muted = volume <= 0
 
   useEffect(() => {
     const el = videoRef.current
     if (!el) return
     el.volume = Math.min(100, Math.max(0, volume)) / 100
-    const shouldMute = volume <= 0 || !audioUnlocked
-    el.muted = shouldMute
-    if (!shouldMute) {
-      el.play?.().catch(() => {
-        // Autoplay con audio bloqueado por el navegador: se queda muted.
-        el.muted = true
-      })
-    }
-  }, [volume, audioUnlocked])
+    el.muted = muted
+    el.play?.().catch(() => {})
+  }, [volume, muted])
 
   return (
     <video
@@ -336,7 +307,7 @@ function VideoLoopPlayer({ src, volume, audioUnlocked }: { src: string; volume: 
       src={src}
       autoPlay
       loop
-      muted={volume <= 0 || !audioUnlocked}
+      muted={muted}
       playsInline
       className="h-full w-full object-contain bg-black"
     />
@@ -346,13 +317,7 @@ function VideoLoopPlayer({ src, volume, audioUnlocked }: { src: string; volume: 
 // ---------------------------------------------------------------------------
 // Content
 // ---------------------------------------------------------------------------
-function Content({
-  assignment,
-  audioUnlocked,
-}: {
-  assignment: ResolvedAssignment | null
-  audioUnlocked: boolean
-}) {
+function Content({ assignment }: { assignment: ResolvedAssignment | null }) {
   if (!assignment) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -368,7 +333,6 @@ function Content({
           key={assignment.sourceUrl}
           url={assignment.sourceUrl}
           volume={assignment.volume}
-          audioUnlocked={audioUnlocked}
           className="relative h-full w-full"
         />
       )
@@ -379,7 +343,6 @@ function Content({
           key={assignment.sourceUrl}
           src={assignment.sourceUrl}
           volume={assignment.volume}
-          audioUnlocked={audioUnlocked}
         />
       )
 
