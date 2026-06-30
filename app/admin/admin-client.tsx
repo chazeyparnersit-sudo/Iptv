@@ -2,7 +2,7 @@
 
 import useSWR from "swr"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Monitor,
   RadioTower,
@@ -13,6 +13,8 @@ import {
   GripVertical,
   ChevronDown,
   Cast,
+  Volume2,
+  VolumeX,
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
@@ -95,6 +97,15 @@ export function AdminClient() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: tvId, name }),
+    })
+    mutateTvs()
+  }
+
+  async function setVolume(tvId: number, volume: number) {
+    await fetch("/api/tvs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: tvId, volume }),
     })
     mutateTvs()
   }
@@ -184,6 +195,7 @@ export function AdminClient() {
               onAssign={assignChannel}
               onReset={resetTv}
               onRename={renameTv}
+              onVolumeChange={setVolume}
             />
           ))}
         </section>
@@ -270,6 +282,7 @@ function TvCard({
   onAssign,
   onReset,
   onRename,
+  onVolumeChange,
 }: {
   tv: TVWithStatus
   channels: Channel[]
@@ -277,10 +290,25 @@ function TvCard({
   onAssign: (tvId: number, channelId: number) => void
   onReset: (tvId: number) => void
   onRename: (tvId: number, name: string) => void
+  onVolumeChange: (tvId: number, volume: number) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(tv.name)
   const [dragOver, setDragOver] = useState(false)
+  // Estado local para que el slider se sienta instantáneo; el valor real se
+  // manda con debounce para no spamear /api/tvs en cada pixel de arrastre.
+  const [volume, setVolumeLocal] = useState(tv.volume ?? 100)
+  const volumeDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setVolumeLocal(tv.volume ?? 100)
+  }, [tv.volume])
+
+  function handleVolumeInput(v: number) {
+    setVolumeLocal(v)
+    if (volumeDebounce.current) clearTimeout(volumeDebounce.current)
+    volumeDebounce.current = setTimeout(() => onVolumeChange(tv.id, v), 250)
+  }
 
   const current = tv.current
   const currentChannel = channels.find((c) => c.id === tv.channel)
@@ -399,6 +427,25 @@ function TvCard({
           <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
           Vivo
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2 px-0.5">
+        {volume === 0 ? (
+          <VolumeX className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+        ) : (
+          <Volume2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+        )}
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={volume}
+          onChange={(e) => handleVolumeInput(Number(e.target.value))}
+          className="h-1.5 flex-1 cursor-pointer accent-blue-600"
+          aria-label={`Volumen TV ${tv.name}`}
+        />
+        <span className="w-8 shrink-0 text-right text-xs tabular-nums text-slate-500">{volume}%</span>
       </div>
 
       <a

@@ -32,8 +32,9 @@ export const tvsPatchSchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
   defaultChannel: z.number().optional(),
-}).refine((d) => d.name !== undefined || d.defaultChannel !== undefined, {
-  message: "at least one of name or defaultChannel required",
+  volume: z.number().min(0).max(100).optional(),
+}).refine((d) => d.name !== undefined || d.defaultChannel !== undefined || d.volume !== undefined, {
+  message: "at least one of name, defaultChannel or volume required",
 })
 
 export const channelSourceSchema = z.object({

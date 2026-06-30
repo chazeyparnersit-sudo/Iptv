@@ -210,17 +210,33 @@ export function RrhhClient() {
     setSending(true)
 
     if (startTime || endTime) {
-      // Scheduled — una entrada de schedule cubre varias TVs con UN sourceUrl.
-      // Para VIDEO_LOOP/PDF/IMAGE_SLIDES (contenido guardado por TV), el archivo
-      // subido se replica igual en la carpeta de cada TV seleccionada (ver
-      // upload-media), así que usamos la primera TV seleccionada como referencia
-      // válida para construir la ruta.
-      const payload = buildPayload(selected[0], mediaByTv[selected[0]])
-      await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, tvIds: selected, startTime, endTime }),
-      })
+      if (needsMedia) {
+        // Contenido por-TV (cada una con su propio archivo/carpeta): una
+        // entrada de schedule por TV, cada una con su sourceUrl correcto.
+        // Antes se creaba UNA entrada compartida con el sourceUrl de la
+        // primera TV seleccionada — funcionaba solo porque el archivo se
+        // replica igual al subirlo, pero quedaba mal si en el futuro cada
+        // TV terminaba con contenido distinto.
+        await Promise.all(
+          selected.map((tvId) => {
+            const payload = buildPayload(tvId, mediaByTv[tvId])
+            return fetch("/api/schedule", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...payload, tvIds: [tvId], startTime, endTime }),
+            })
+          })
+        )
+      } else {
+        // LIVE/CANVA/ANNOUNCEMENT: un sourceUrl/contenido legítimamente
+        // compartido entre varias TVs -> una sola entrada para todas.
+        const payload = buildPayload(selected[0])
+        await fetch("/api/schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, tvIds: selected, startTime, endTime }),
+        })
+      }
       mutateSchedule()
     } else {
       // Immediate override on each selected TV — payload por TV, con la info

@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from "react"
 
 interface WhepPlayerProps {
   url: string
+  volume?: number
   className?: string
 }
 type Status = "connecting" | "playing" | "error"
 
 const MAX_BUFFER_S = 1.5
 
-export function WhepPlayer({ url, className }: WhepPlayerProps) {
+export function WhepPlayer({ url, volume = 100, className }: WhepPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -17,6 +18,17 @@ export function WhepPlayer({ url, className }: WhepPlayerProps) {
   const lastStats = useRef<{ delay: number; count: number }>({ delay: 0, count: 0 })
   const [status, setStatus] = useState<Status>("connecting")
   const [muted, setMuted] = useState(true)
+
+  // Volumen controlado desde el admin (0-100). Solo aplica una vez que el
+  // usuario ya desmuteó (o si volume llega en 0, fuerza mute de nuevo) —
+  // el mute inicial sigue siendo obligatorio por la política de autoplay
+  // de los navegadores, igual que antes.
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    el.volume = Math.min(100, Math.max(0, volume)) / 100
+    if (volume <= 0) setMuted(true)
+  }, [volume])
 
   useEffect(() => {
     let cancelled = false

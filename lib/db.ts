@@ -74,6 +74,7 @@ export function resolveAssignment(db: any, tvId: number): ResolvedAssignment | n
     content: channel.content,
     bgColor: channel.bgColor,
     textColor: channel.textColor,
+    volume: tv.volume ?? 100,
   }
 }
 
@@ -92,5 +93,6 @@ function buildResolved(db: any, tv: TV, o: any): ResolvedAssignment {
     content: o.content,
     bgColor: o.bgColor,
     textColor: o.textColor,
+    volume: tv.volume ?? 100,
   }
 }

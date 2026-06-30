@@ -284,6 +284,45 @@ function PdfSlideshow({ tvId }: { tvId: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// VideoLoopPlayer — <video> en loop con volumen controlable desde el admin.
+// Antes el <video> tenía `muted` fijo en el JSX (sin forma de cambiarlo). Los
+// navegadores bloquean autoplay con sonido sin gesto del usuario, así que
+// arrancamos muted=true (requisito para autoplay) y, si el volumen pedido es
+// > 0, intentamos desmutear apenas el video está listo. Si el navegador lo
+// bloquea (kiosko sin flags de autoplay), se degrada a silencioso sin romper
+// la reproducción, igual que ya hace WhepPlayer con su overlay de "toca para
+// activar audio".
+// ---------------------------------------------------------------------------
+function VideoLoopPlayer({ src, volume }: { src: string; volume: number }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    el.volume = Math.min(100, Math.max(0, volume)) / 100
+    el.muted = volume <= 0
+    if (volume > 0) {
+      el.play?.().catch(() => {
+        // Autoplay con audio bloqueado por el navegador: se queda muted.
+        el.muted = true
+      })
+    }
+  }, [volume])
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      loop
+      muted={volume <= 0}
+      playsInline
+      className="h-full w-full object-contain bg-black"
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Content
 // ---------------------------------------------------------------------------
 function Content({ assignment }: { assignment: ResolvedAssignment | null }) {
@@ -301,20 +340,17 @@ function Content({ assignment }: { assignment: ResolvedAssignment | null }) {
         <WhepPlayer
           key={assignment.sourceUrl}
           url={assignment.sourceUrl}
+          volume={assignment.volume}
           className="relative h-full w-full"
         />
       )
 
     case "VIDEO_LOOP":
       return (
-        <video
+        <VideoLoopPlayer
           key={assignment.sourceUrl}
           src={assignment.sourceUrl}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="h-full w-full object-contain bg-black"
+          volume={assignment.volume}
         />
       )
 

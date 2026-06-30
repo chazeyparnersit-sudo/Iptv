@@ -25,10 +25,11 @@ export async function POST(req: Request) {
   if (authError) return authError
   const parsed = tvsPatchSchema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
-  const { id, name, defaultChannel } = parsed.data
-  const update: Partial<{name: string, defaultChannel: number}> = {}
+  const { id, name, defaultChannel, volume } = parsed.data
+  const update: Partial<{name: string, defaultChannel: number, volume: number}> = {}
   if (name !== undefined) update.name = name
   if (defaultChannel !== undefined) update.defaultChannel = defaultChannel
+  if (volume !== undefined) update.volume = volume
   const { data, error } = await supabase.from('tvs').update(update).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: "tv not found" }, { status: 404 })
   return NextResponse.json({ tv: data })

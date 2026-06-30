@@ -24,6 +24,7 @@ export interface TV {
   defaultChannel: number
   lastSeen: string
   override: Override | null
+  volume?: number
 }
 export interface ScheduleItem {
   id: string
@@ -62,4 +63,5 @@ export interface ResolvedAssignment {
   content?: string
   bgColor?: string
   textColor?: string
+  volume: number
 }
